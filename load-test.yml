@@ -1,0 +1,63 @@
+config:
+  target: "https://localhost:8443"
+  processor: "./processor.js"
+  tls:
+    rejectUnauthorized: false
+  phases:
+    - duration: 5
+      arrivalRate: 50
+  plugins:
+    expect: { }
+  variables:
+    username:
+      - "Patxi"
+      - "Michel"
+
+before:
+  flow:
+    - log: "Creación del evento"
+    - post:
+        auth:
+          user: "Patxi"
+          pass: "pass"
+        url: "/api/events/"
+        formData:
+          name: "Event test"
+          description: "Description.."
+          date: "2020-11-22T19:00:00+0000"
+          price: 19.99
+          max_capacity: 50
+        beforeRequest: "setJSONBody"
+        expect:
+          - statusCode: 201
+          - contentType: json
+        capture:
+          json: "$.id"
+          as: "eventId"
+
+scenarios:
+  - flow:
+      - post:
+          auth:
+            user: "{{ username }}"
+            pass: "pass"
+          url: "/api/tickets/"
+          qs:
+            eventId: "{{ eventId }}"
+          expect:
+            - statusCode:
+                - 201
+                - 403
+                - 409
+            - contentType: json
+          afterResponse: "addException"
+
+after:
+  flow:
+    - log: "Eliminación de datos de prueba"
+    - delete:
+        auth:
+          user: "admin"
+          pass: "pass"
+        url: "/api/events/{{ eventId }}"
+
